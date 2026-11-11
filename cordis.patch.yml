@@ -1,0 +1,35 @@
+# dsh-plugin-safari-mcp — DSH bundle patch layer.
+#
+# Applies with this profile's bundles. Unlike a normal plugin package this bundle
+# ships no JavaScript of its own: it inserts one row of the *built-in* MCP client
+# bridge (@deepseek-ai/dsh-mcp-client), pointed at Apple's Safari MCP server.
+# The bridge discovers the server's tools and registers each one on ctx.tools as
+# `mcp__safari__<rawName>` (e.g. mcp__safari__create_tab, mcp__safari__get_page_content).
+#
+# Prerequisites (macOS only):
+#   * Safari 27+ (safaridriver ships --mcp from Safari 27 / Safari Technology Preview 247)
+#   * Safari remote automation enabled: Safari > Settings > Developer >
+#     "Allow remote automation and external agents"
+#     (equivalent CLI gate: ~/Library/WebDriver/com.apple.Safari.plist with
+#      AllowRemoteAutomation = true, or `sudo safaridriver --enable`)
+#
+# Notes:
+#   * transport stdio: the child process is /usr/bin/safaridriver --mcp
+#   * serverName "safari" is reserved for this bridge; keep it unique per app.
+#   * toolCallTimeoutMs is raised because the first tool call creates the WebDriver
+#     session, which launches Safari and can be slow on a cold start.
+#   * failOnStartupError: true makes a broken connection loud instead of silently
+#     registering zero tools. Initial connect only performs `initialize` +
+#     `tools/list`, so it does not need a live Safari session; a disabled remote
+#     automation setting surfaces on the first tool call instead.
+- insert:
+    - id: mcp-safari
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: safari
+        command: /usr/bin/safaridriver
+        args:
+          - '--mcp'
+        toolCallTimeoutMs: 120000
+        failOnStartupError: true
